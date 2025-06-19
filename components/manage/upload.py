@@ -1,8 +1,9 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException
-from typing import List
+from fastapi import APIRouter, File, UploadFile, HTTPException, Form
+from typing import List, Optional
 import shutil
 import os
 import mimetypes
+from datetime import datetime
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -30,10 +31,30 @@ def get_unique_filename(directory, filename):
         
         counter += 1
 
+def create_folder_path(folder_name):
+    """Create and return folder path"""
+    if not folder_name:
+        folder_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    
+    # Sanitize folder name
+    folder_name = "".join(c for c in folder_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+    if not folder_name:
+        folder_name = "default_folder"
+    
+    folder_path = os.path.join(UPLOAD_DIR, folder_name)
+    os.makedirs(folder_path, exist_ok=True)
+    return folder_path, folder_name
+
 @router.post("/pictures")
-async def upload_pictures(files: List[UploadFile] = File(...)):
+async def upload_pictures(
+    files: List[UploadFile] = File(...),
+    folder_name: Optional[str] = Form(None)
+):
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
+    
+    # Create folder
+    folder_path, actual_folder_name = create_folder_path(folder_name)
     
     saved_files = []
     errors = []
@@ -50,9 +71,9 @@ async def upload_pictures(files: List[UploadFile] = File(...)):
                 errors.append(f"{file.filename}: File too large (max 10MB)")
                 continue
             
-            # Get unique filename (automatically adds number if exists)
-            unique_filename = get_unique_filename(UPLOAD_DIR, file.filename)
-            file_path = os.path.join(UPLOAD_DIR, unique_filename)
+            # Get unique filename within the folder
+            unique_filename = get_unique_filename(folder_path, file.filename)
+            file_path = os.path.join(folder_path, unique_filename)
             
             # Save file
             with open(file_path, "wb") as buffer:
@@ -61,6 +82,7 @@ async def upload_pictures(files: List[UploadFile] = File(...)):
             file_info = {
                 "filename": unique_filename,
                 "original_name": file.filename,
+                "folder": actual_folder_name,
                 "path": file_path,
                 "size": file.size,
                 "renamed": unique_filename != file.filename
@@ -71,7 +93,11 @@ async def upload_pictures(files: List[UploadFile] = File(...)):
         except Exception as e:
             errors.append(f"{file.filename}: {str(e)}")
     
-    result = {"uploaded": saved_files}
+    result = {
+        "uploaded": saved_files,
+        "folder": actual_folder_name,
+        "total_files": len(saved_files)
+    }
     
     if errors:
         result["errors"] = errors
@@ -80,3 +106,16 @@ async def upload_pictures(files: List[UploadFile] = File(...)):
         raise HTTPException(status_code=400, detail="No files were uploaded successfully")
     
     return result
+
+@router.post("/folders")
+async def create_folder(folder_name: str = Form(...)):
+    """Create a new empty folder"""
+    try:
+        folder_path, actual_folder_name = create_folder_path(folder_name)
+        return {
+            "message": "Folder created successfully",
+            "folder_name": actual_folder_name,
+            "path": folder_path
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create folder: {str(e)}")

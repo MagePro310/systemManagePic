@@ -10,30 +10,36 @@
 
 <body>
     <div class="container">
-        <h1>Picture Management System</h1>
+        <h1>📁 Picture Management System</h1>
 
         <!-- Upload Section -->
         <div class="section">
             <h2>Upload Pictures</h2>
             <div class="upload-area">
                 <input type="file" id="fileInput" multiple accept="image/*">
+                <input type="text" id="folderNameInput" placeholder="Folder name (optional)" maxlength="50">
                 <button onclick="uploadFiles()">Upload</button>
             </div>
             <div id="filePreview" class="file-preview"></div>
             <div class="upload-info">
-                <small>💡 If a file with the same name exists, a number will be added automatically (e.g.,
-                    image_1.jpg)</small>
+                <small>💡 If no folder name is provided, a timestamp folder will be created automatically</small>
             </div>
         </div>
 
-        <!-- Picture List Section -->
+        <!-- Folder Management Section -->
         <div class="section">
-            <h2>Your Pictures</h2>
-            <div class="section-controls">
-                <button onclick="loadPictures()">Refresh List</button>
-                <button onclick="downloadAllPictures()" class="btn-download-all">📦 Download All</button>
+            <h2>Folder Management</h2>
+            <div class="folder-controls">
+                <input type="text" id="newFolderInput" placeholder="New folder name" maxlength="50">
+                <button onclick="createFolder()">Create Folder</button>
+                <button onclick="loadFolders()" class="btn-refresh">🔄 Refresh</button>
             </div>
-            <div id="pictureList" class="picture-grid"></div>
+        </div>
+
+        <!-- Folders Display Section -->
+        <div class="section">
+            <h2>Your Folders</h2>
+            <div id="foldersList" class="folders-container"></div>
         </div>
 
         <!-- Status Messages -->

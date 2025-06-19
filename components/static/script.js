@@ -1,5 +1,6 @@
-const API_BASE = 'http://localhost:8000/pictures';
+const API_BASE = 'http://localhost:8000';
 let currentReplaceFilename = null;
+let currentReplaceFolder = null;
 
 // Show status message
 function showStatus(message, type = 'success') {
@@ -11,6 +12,39 @@ function showStatus(message, type = 'success') {
     setTimeout(() => {
         status.style.display = 'none';
     }, 5000);
+}
+
+// Create new folder
+async function createFolder() {
+    const folderNameInput = document.getElementById('newFolderInput');
+    const folderName = folderNameInput.value.trim();
+    
+    if (!folderName) {
+        showStatus('Please enter a folder name', 'error');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('folder_name', folderName);
+        
+        const response = await fetch(`${API_BASE}/folders`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showStatus(`Folder "${result.folder_name}" created successfully!`);
+            folderNameInput.value = '';
+            loadFolders();
+        } else {
+            showStatus('Failed to create folder: ' + (result.detail || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        showStatus('Error creating folder: ' + error.message, 'error');
+    }
 }
 
 // Show file preview before upload
@@ -60,9 +94,10 @@ function removeFile(index) {
     showFilePreview();
 }
 
-// Upload files with automatic numbering for duplicates
+// Upload files to folder
 async function uploadFiles() {
     const fileInput = document.getElementById('fileInput');
+    const folderNameInput = document.getElementById('folderNameInput');
     const files = fileInput.files;
     
     if (files.length === 0) {
@@ -80,8 +115,13 @@ async function uploadFiles() {
         formData.append('files', file);
     }
     
+    const folderName = folderNameInput.value.trim();
+    if (folderName) {
+        formData.append('folder_name', folderName);
+    }
+    
     try {
-        const response = await fetch(API_BASE, {
+        const response = await fetch(`${API_BASE}/pictures`, {
             method: 'POST',
             body: formData
         });
@@ -89,7 +129,7 @@ async function uploadFiles() {
         const result = await response.json();
         
         if (response.ok) {
-            let message = `${result.uploaded.length} file(s) uploaded successfully!`;
+            let message = `${result.total_files} file(s) uploaded to folder "${result.folder}"!`;
             
             // Check for renamed files
             const renamedFiles = result.uploaded.filter(file => file.renamed);
@@ -109,8 +149,9 @@ async function uploadFiles() {
             }
             
             fileInput.value = '';
+            folderNameInput.value = '';
             document.getElementById('filePreview').innerHTML = '';
-            loadPictures();
+            loadFolders();
         } else {
             showStatus('Upload failed: ' + (result.detail || 'Unknown error'), 'error');
         }
@@ -122,18 +163,62 @@ async function uploadFiles() {
     }
 }
 
-// Enhanced download function with location chooser
-async function downloadPicture(filename) {
+// Load and display folders
+async function loadFolders() {
+    const foldersList = document.getElementById('foldersList');
+    foldersList.innerHTML = '<div class="loading">Loading folders...</div>';
+    
     try {
-        // Show downloading status
+        const response = await fetch(`${API_BASE}/folders`);
+        const data = await response.json();
+        
+        if (data.folders && Object.keys(data.folders).length > 0) {
+            foldersList.innerHTML = Object.values(data.folders).map(folder => `
+                <div class="folder-item">
+                    <div class="folder-header">
+                        <h3>📁 ${folder.name}</h3>
+                        <div class="folder-info">
+                            <span class="picture-count">${folder.count} picture(s)</span>
+                            <button class="btn-delete-folder" onclick="deleteFolder('${folder.name}')" title="Delete folder">
+                                🗑️ Delete Folder
+                            </button>
+                        </div>
+                    </div>
+                    <div class="folder-pictures">
+                        ${folder.pictures.length > 0 ? folder.pictures.map(picture => `
+                            <div class="picture-item-small">
+                                <img src="${API_BASE}/pictures/${picture.path}" alt="${picture.filename}" 
+                                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg=='"
+                                     title="${picture.filename} (${formatFileSize(picture.size)})">
+                                <div class="picture-actions-small">
+                                    <button class="btn-download-small" onclick="downloadPicture('${folder.name}', '${picture.filename}')" title="Download">📥</button>
+                                    <button class="btn-replace-small" onclick="replacePicture('${folder.name}', '${picture.filename}')" title="Replace">🔄</button>
+                                    <button class="btn-delete-small" onclick="deletePicture('${folder.name}', '${picture.filename}')" title="Delete">🗑️</button>
+                                </div>
+                                <div class="picture-name">${picture.filename}</div>
+                            </div>
+                        `).join('') : '<div class="empty-folder">Empty folder</div>'}
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            foldersList.innerHTML = '<div class="loading">No folders found. Create one or upload pictures!</div>';
+        }
+    } catch (error) {
+        foldersList.innerHTML = '<div class="loading">Error loading folders</div>';
+        showStatus('Error loading folders: ' + error.message, 'error');
+    }
+}
+
+// Download picture from specific folder
+async function downloadPicture(folderName, filename) {
+    try {
         showStatus(`Preparing download for ${filename}...`, 'info');
         
-        // Check if the File System Access API is supported (Chrome/Edge)
         if ('showSaveFilePicker' in window) {
-            await downloadWithSaveDialog(filename);
+            await downloadWithSaveDialog(folderName, filename);
         } else {
-            // Fallback to traditional download
-            await downloadTraditional(filename);
+            await downloadTraditional(folderName, filename);
         }
         
     } catch (error) {
@@ -142,54 +227,37 @@ async function downloadPicture(filename) {
             showStatus('Download cancelled by user', 'info');
         } else {
             showStatus(`Download failed: ${error.message}`, 'error');
-            // Try fallback method
-            await downloadTraditional(filename);
+            await downloadTraditional(folderName, filename);
         }
     }
 }
 
-// Download with save dialog (modern browsers)
-async function downloadWithSaveDialog(filename) {
+// Download with save dialog
+async function downloadWithSaveDialog(folderName, filename) {
     try {
-        // Get file extension
         const fileExtension = filename.split('.').pop().toLowerCase();
-        
-        // Define file type based on extension
         const mimeTypes = {
-            'jpg': 'image/jpeg',
-            'jpeg': 'image/jpeg',
-            'png': 'image/png',
-            'gif': 'image/gif',
-            'webp': 'image/webp',
-            'bmp': 'image/bmp',
-            'svg': 'image/svg+xml'
+            'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+            'gif': 'image/gif', 'webp': 'image/webp', 'bmp': 'image/bmp', 'svg': 'image/svg+xml'
         };
-        
         const mimeType = mimeTypes[fileExtension] || 'image/*';
         
-        // Show save dialog
         const fileHandle = await window.showSaveFilePicker({
             suggestedName: filename,
             types: [{
                 description: 'Image files',
-                accept: {
-                    [mimeType]: [`.${fileExtension}`]
-                }
+                accept: { [mimeType]: [`.${fileExtension}`] }
             }]
         });
         
-        // Fetch the file from server
         showStatus(`Downloading ${filename}...`, 'info');
-        const response = await fetch(`${API_BASE}/${filename}`);
+        const response = await fetch(`${API_BASE}/pictures/${folderName}/${filename}`);
         
         if (!response.ok) {
             throw new Error(`Failed to download: ${response.status} ${response.statusText}`);
         }
         
-        // Get the file data
         const arrayBuffer = await response.arrayBuffer();
-        
-        // Write to the chosen location
         const writable = await fileHandle.createWritable();
         await writable.write(arrayBuffer);
         await writable.close();
@@ -197,146 +265,45 @@ async function downloadWithSaveDialog(filename) {
         showStatus(`${filename} saved successfully!`);
         
     } catch (error) {
-        if (error.name === 'AbortError') {
-            throw error; // Re-throw to handle in parent function
-        }
+        if (error.name === 'AbortError') throw error;
         throw new Error(`Save dialog error: ${error.message}`);
     }
 }
 
-// Traditional download (fallback)
-async function downloadTraditional(filename) {
+// Traditional download
+async function downloadTraditional(folderName, filename) {
     try {
         showStatus(`Downloading ${filename}...`, 'info');
-        
-        // Fetch the file
-        const response = await fetch(`${API_BASE}/${filename}`);
+        const response = await fetch(`${API_BASE}/pictures/${folderName}/${filename}`);
         
         if (!response.ok) {
             throw new Error(`Failed to download: ${response.status} ${response.statusText}`);
         }
         
-        // Get the blob data
         const blob = await response.blob();
-        
-        // Create download URL
         const url = window.URL.createObjectURL(blob);
         
-        // Create temporary download link
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
         link.style.display = 'none';
         
-        // Add to DOM, click, and remove
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
-        // Clean up the URL object
         window.URL.revokeObjectURL(url);
         
-        showStatus(`${filename} downloaded to default location!`);
+        showStatus(`${filename} downloaded!`);
         
     } catch (error) {
-        throw new Error(`Traditional download error: ${error.message}`);
+        throw new Error(`Download error: ${error.message}`);
     }
 }
 
-// Download all pictures with location chooser
-async function downloadAllPictures() {
-    try {
-        // Get list of pictures
-        const response = await fetch(API_BASE);
-        const data = await response.json();
-        const pictures = data.pictures || [];
-        
-        if (pictures.length === 0) {
-            showStatus('No pictures to download', 'warning');
-            return;
-        }
-        
-        if (!confirm(`Download all ${pictures.length} pictures?`)) {
-            return;
-        }
-        
-        // Check if directory picker is supported
-        if ('showDirectoryPicker' in window) {
-            await downloadAllToDirectory(pictures);
-        } else {
-            // Download one by one with traditional method
-            showStatus(`Downloading ${pictures.length} pictures...`, 'info');
-            for (const picture of pictures) {
-                await downloadTraditional(picture);
-                // Small delay between downloads
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
-            showStatus(`All ${pictures.length} pictures downloaded!`);
-        }
-        
-    } catch (error) {
-        console.error('Download all error:', error);
-        if (error.name === 'AbortError') {
-            showStatus('Download cancelled by user', 'info');
-        } else {
-            showStatus(`Download all failed: ${error.message}`, 'error');
-        }
-    }
-}
-
-// Download all pictures to a chosen directory
-async function downloadAllToDirectory(pictures) {
-    try {
-        // Show directory picker
-        const directoryHandle = await window.showDirectoryPicker();
-        
-        showStatus(`Downloading ${pictures.length} pictures to selected folder...`, 'info');
-        
-        let successCount = 0;
-        let errorCount = 0;
-        
-        for (const filename of pictures) {
-            try {
-                // Fetch the file
-                const response = await fetch(`${API_BASE}/${filename}`);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch ${filename}`);
-                }
-                
-                // Get file data
-                const arrayBuffer = await response.arrayBuffer();
-                
-                // Create file in chosen directory
-                const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
-                const writable = await fileHandle.createWritable();
-                await writable.write(arrayBuffer);
-                await writable.close();
-                
-                successCount++;
-                
-            } catch (error) {
-                console.error(`Error downloading ${filename}:`, error);
-                errorCount++;
-            }
-        }
-        
-        if (errorCount === 0) {
-            showStatus(`All ${successCount} pictures downloaded successfully!`);
-        } else {
-            showStatus(`${successCount} pictures downloaded, ${errorCount} failed`, 'warning');
-        }
-        
-    } catch (error) {
-        if (error.name === 'AbortError') {
-            throw error; // Re-throw to handle in parent function
-        }
-        throw new Error(`Directory download error: ${error.message}`);
-    }
-}
-
-// Trigger replace file selection
-function replacePicture(filename) {
+// Replace picture
+function replacePicture(folderName, filename) {
     currentReplaceFilename = filename;
+    currentReplaceFolder = folderName;
     const replaceFileInput = document.getElementById('replaceFileInput');
     replaceFileInput.click();
 }
@@ -344,14 +311,14 @@ function replacePicture(filename) {
 // Handle replace file selection
 async function handleReplaceFile(event) {
     const file = event.target.files[0];
-    if (!file || !currentReplaceFilename) return;
+    if (!file || !currentReplaceFilename || !currentReplaceFolder) return;
     
     if (!file.type.startsWith('image/')) {
         showStatus('Please select an image file', 'error');
         return;
     }
     
-    if (!confirm(`Are you sure you want to replace "${currentReplaceFilename}" with "${file.name}"?`)) {
+    if (!confirm(`Replace "${currentReplaceFilename}" in folder "${currentReplaceFolder}" with "${file.name}"?`)) {
         return;
     }
     
@@ -359,14 +326,14 @@ async function handleReplaceFile(event) {
     formData.append('file', file);
     
     try {
-        const response = await fetch(`${API_BASE}/${currentReplaceFilename}`, {
+        const response = await fetch(`${API_BASE}/pictures/${currentReplaceFolder}/${currentReplaceFilename}`, {
             method: 'PUT',
             body: formData
         });
         
         if (response.ok) {
             showStatus(`${currentReplaceFilename} replaced successfully!`);
-            loadPictures();
+            loadFolders();
         } else {
             const result = await response.json();
             showStatus('Replace failed: ' + (result.detail || 'Unknown error'), 'error');
@@ -374,66 +341,26 @@ async function handleReplaceFile(event) {
     } catch (error) {
         showStatus('Replace error: ' + error.message, 'error');
     } finally {
-        // Clear the file input
         event.target.value = '';
         currentReplaceFilename = null;
-    }
-}
-
-// Load and display pictures
-async function loadPictures() {
-    const pictureList = document.getElementById('pictureList');
-    pictureList.innerHTML = '<div class="loading">Loading pictures...</div>';
-    
-    try {
-        const response = await fetch(API_BASE);
-        const data = await response.json();
-        
-        if (data.pictures && data.pictures.length > 0) {
-            pictureList.innerHTML = data.pictures.map(filename => `
-                <div class="picture-item">
-                    <img src="${API_BASE}/${filename}" alt="${filename}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBmb3VuZDwvdGV4dD48L3N2Zz4='">
-                    <h3>${filename}</h3>
-                    <div class="picture-actions">
-                        <button class="btn-download" onclick="downloadPicture('${filename}')" title="Choose location and download ${filename}">
-                            📥 Download
-                        </button>
-                        <button class="btn-replace" onclick="replacePicture('${filename}')" title="Replace ${filename}">
-                            🔄 Replace
-                        </button>
-                        <button class="btn-delete" onclick="deletePicture('${filename}')" title="Delete ${filename}">
-                            🗑️ Delete
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        } else {
-            pictureList.innerHTML = '<div class="loading">No pictures found</div>';
-        }
-    } catch (error) {
-        pictureList.innerHTML = '<div class="loading">Error loading pictures</div>';
-        showStatus('Error loading pictures: ' + error.message, 'error');
+        currentReplaceFolder = null;
     }
 }
 
 // Delete picture
-async function deletePicture(filename) {
-    if (!confirm(`Are you sure you want to delete ${filename}?`)) {
+async function deletePicture(folderName, filename) {
+    if (!confirm(`Delete "${filename}" from folder "${folderName}"?`)) {
         return;
     }
     
     try {
-        const response = await fetch(API_BASE, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify([filename])
+        const response = await fetch(`${API_BASE}/pictures/${folderName}/${filename}`, {
+            method: 'DELETE'
         });
         
         if (response.ok) {
             showStatus(`${filename} deleted successfully!`);
-            loadPictures();
+            loadFolders();
         } else {
             showStatus('Delete failed', 'error');
         }
@@ -442,13 +369,45 @@ async function deletePicture(filename) {
     }
 }
 
+// Delete entire folder
+async function deleteFolder(folderName) {
+    if (!confirm(`Delete entire folder "${folderName}" and all its pictures? This cannot be undone!`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/folders/${folderName}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showStatus(`Folder "${folderName}" and ${result.files_deleted} file(s) deleted successfully!`);
+            loadFolders();
+        } else {
+            showStatus('Delete folder failed: ' + (result.detail || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        showStatus('Delete folder error: ' + error.message, 'error');
+    }
+}
+
 // Add event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    loadPictures();
+    loadFolders();
     
     const fileInput = document.getElementById('fileInput');
     const replaceFileInput = document.getElementById('replaceFileInput');
+    const newFolderInput = document.getElementById('newFolderInput');
     
     fileInput.addEventListener('change', showFilePreview);
     replaceFileInput.addEventListener('change', handleReplaceFile);
+    
+    // Enter key support for folder creation
+    newFolderInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            createFolder();
+        }
+    });
 });
