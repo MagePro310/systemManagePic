@@ -13,6 +13,115 @@ function showStatus(message, type = 'success') {
     }, 5000);
 }
 
+// Show file preview before upload
+function showFilePreview() {
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('filePreview');
+    const files = fileInput.files;
+    
+    if (files.length === 0) {
+        preview.innerHTML = '';
+        return;
+    }
+    
+    preview.innerHTML = `
+        <h3>Selected Files (${files.length}):</h3>
+        <div class="file-list">
+            ${Array.from(files).map((file, index) => `
+                <div class="file-item">
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">(${formatFileSize(file.size)})</span>
+                    <button type="button" onclick="removeFile(${index})" class="btn-remove">×</button>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Format file size
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Remove file from selection
+function removeFile(index) {
+    const fileInput = document.getElementById('fileInput');
+    const dt = new DataTransfer();
+    const files = Array.from(fileInput.files);
+    
+    files.splice(index, 1);
+    files.forEach(file => dt.items.add(file));
+    
+    fileInput.files = dt.files;
+    showFilePreview();
+}
+
+// Upload files with automatic numbering for duplicates
+async function uploadFiles() {
+    const fileInput = document.getElementById('fileInput');
+    const files = fileInput.files;
+    
+    if (files.length === 0) {
+        showStatus('Please select files to upload', 'error');
+        return;
+    }
+    
+    // Show upload progress
+    const uploadBtn = document.querySelector('button[onclick="uploadFiles()"]');
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Uploading...';
+    
+    const formData = new FormData();
+    for (let file of files) {
+        formData.append('files', file);
+    }
+    
+    try {
+        const response = await fetch(API_BASE, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            let message = `${result.uploaded.length} file(s) uploaded successfully!`;
+            
+            // Check for renamed files
+            const renamedFiles = result.uploaded.filter(file => file.renamed);
+            if (renamedFiles.length > 0) {
+                const renamedList = renamedFiles.map(file => 
+                    `${file.original_name} → ${file.filename}`
+                ).join(', ');
+                message += `\n📝 Renamed files: ${renamedList}`;
+                showStatus(message, 'warning');
+            } else {
+                showStatus(message);
+            }
+            
+            if (result.errors && result.errors.length > 0) {
+                message += `\n⚠️ Errors: ${result.errors.join(', ')}`;
+                showStatus(message, 'warning');
+            }
+            
+            fileInput.value = '';
+            document.getElementById('filePreview').innerHTML = '';
+            loadPictures();
+        } else {
+            showStatus('Upload failed: ' + (result.detail || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        showStatus('Upload error: ' + error.message, 'error');
+    } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Upload';
+    }
+}
+
 // Enhanced download function with location chooser
 async function downloadPicture(filename) {
     try {
@@ -225,146 +334,6 @@ async function downloadAllToDirectory(pictures) {
     }
 }
 
-// Show file preview before upload
-function showFilePreview() {
-    const fileInput = document.getElementById('fileInput');
-    const preview = document.getElementById('filePreview');
-    const files = fileInput.files;
-    
-    if (files.length === 0) {
-        preview.innerHTML = '';
-        return;
-    }
-    
-    preview.innerHTML = `
-        <h3>Selected Files (${files.length}):</h3>
-        <div class="file-list">
-            ${Array.from(files).map((file, index) => `
-                <div class="file-item">
-                    <span class="file-name">${file.name}</span>
-                    <span class="file-size">(${formatFileSize(file.size)})</span>
-                    <button type="button" onclick="removeFile(${index})" class="btn-remove">×</button>
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-// Check for existing files and show warnings
-async function checkExistingFiles() {
-    const fileInput = document.getElementById('fileInput');
-    const replaceCheckbox = document.getElementById('replaceCheckbox');
-    const files = Array.from(fileInput.files);
-    
-    if (files.length === 0) return;
-    
-    try {
-        const response = await fetch(API_BASE);
-        const data = await response.json();
-        const existingFiles = data.pictures || [];
-        
-        const duplicates = files.filter(file => 
-            existingFiles.includes(file.name)
-        );
-        
-        if (duplicates.length > 0 && !replaceCheckbox.checked) {
-            const duplicateNames = duplicates.map(f => f.name).join(', ');
-            showStatus(
-                `Warning: Files already exist: ${duplicateNames}. New names will be generated unless you check "Replace existing files".`, 
-                'warning'
-            );
-        }
-    } catch (error) {
-        console.error('Error checking existing files:', error);
-    }
-}
-
-// Format file size
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-// Remove file from selection
-function removeFile(index) {
-    const fileInput = document.getElementById('fileInput');
-    const dt = new DataTransfer();
-    const files = Array.from(fileInput.files);
-    
-    files.splice(index, 1);
-    files.forEach(file => dt.items.add(file));
-    
-    fileInput.files = dt.files;
-    showFilePreview();
-}
-
-// Upload files with progress and replace option
-async function uploadFiles() {
-    const fileInput = document.getElementById('fileInput');
-    const replaceCheckbox = document.getElementById('replaceCheckbox');
-    const files = fileInput.files;
-    
-    if (files.length === 0) {
-        showStatus('Please select files to upload', 'error');
-        return;
-    }
-    
-    // Show upload progress
-    const uploadBtn = document.querySelector('button[onclick="uploadFiles()"]');
-    uploadBtn.disabled = true;
-    uploadBtn.textContent = 'Uploading...';
-    
-    const formData = new FormData();
-    for (let file of files) {
-        formData.append('files', file);
-    }
-    formData.append('replace', replaceCheckbox.checked);
-    
-    try {
-        const response = await fetch(API_BASE, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            let message = '';
-            const uploadedCount = result.uploaded?.length || 0;
-            const replacedCount = result.replaced?.length || 0;
-            
-            if (uploadedCount > 0) {
-                message += `${uploadedCount} new file(s) uploaded. `;
-            }
-            if (replacedCount > 0) {
-                message += `${replacedCount} file(s) replaced. `;
-            }
-            
-            if (result.errors && result.errors.length > 0) {
-                message += `\nWarnings: ${result.errors.join(', ')}`;
-                showStatus(message, 'warning');
-            } else {
-                showStatus(message || 'Upload completed successfully!');
-            }
-            
-            fileInput.value = '';
-            replaceCheckbox.checked = false;
-            document.getElementById('filePreview').innerHTML = '';
-            loadPictures();
-        } else {
-            showStatus('Upload failed: ' + (result.detail || 'Unknown error'), 'error');
-        }
-    } catch (error) {
-        showStatus('Upload error: ' + error.message, 'error');
-    } finally {
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = 'Upload';
-    }
-}
-
 // Trigger replace file selection
 function replacePicture(filename) {
     currentReplaceFilename = filename;
@@ -411,7 +380,7 @@ async function handleReplaceFile(event) {
     }
 }
 
-// Load and display pictures with enhanced download buttons
+// Load and display pictures
 async function loadPictures() {
     const pictureList = document.getElementById('pictureList');
     pictureList.innerHTML = '<div class="loading">Loading pictures...</div>';
@@ -478,14 +447,8 @@ document.addEventListener('DOMContentLoaded', function() {
     loadPictures();
     
     const fileInput = document.getElementById('fileInput');
-    const replaceCheckbox = document.getElementById('replaceCheckbox');
     const replaceFileInput = document.getElementById('replaceFileInput');
     
-    fileInput.addEventListener('change', function() {
-        showFilePreview();
-        checkExistingFiles();
-    });
-    
-    replaceCheckbox.addEventListener('change', checkExistingFiles);
+    fileInput.addEventListener('change', showFilePreview);
     replaceFileInput.addEventListener('change', handleReplaceFile);
 });

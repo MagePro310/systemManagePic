@@ -19,18 +19,10 @@ case "$1" in
     fi
     ;;
   post)
-    # Usage: ./picture_cli.sh post [--replace] /path/to/file1.jpg [/path/to/file2.jpg ...]
-    REPLACE_FLAG="false"
-    
-    # Check for --replace flag
-    if [ "$2" = "--replace" ]; then
-      REPLACE_FLAG="true"
-      shift
-    fi
-    
+    # Usage: ./picture_cli.sh post /path/to/file1.jpg [/path/to/file2.jpg ...]
     if [ -z "$2" ]; then 
       echo "Error: Missing file(s)"
-      echo "Usage: $0 post [--replace] /path/to/file1.jpg [/path/to/file2.jpg ...]"
+      echo "Usage: $0 post /path/to/file1.jpg [/path/to/file2.jpg ...]"
       exit 1
     fi
     shift
@@ -44,10 +36,7 @@ case "$1" in
       FORM_ARGS+=(-F "files=@$file")
     done
     
-    # Add replace flag
-    FORM_ARGS+=(-F "replace=$REPLACE_FLAG")
-    
-    echo "Uploading files... (Replace: $REPLACE_FLAG)"
+    echo "Uploading files... (duplicate names will be numbered automatically)"
     curl "${FORM_ARGS[@]}" "$URL"
     echo
     ;;
@@ -85,13 +74,12 @@ case "$1" in
   *)
     echo "Picture Management CLI"
     echo "Usage:"
-    echo "  $0 get filename                                    - Download a picture"
-    echo "  $0 post [--replace] /path/to/file1.jpg [file2...] - Upload picture(s)"
-    echo "  $0 put filename /path/to/newfile.jpg               - Update a picture"
-    echo "  $0 delete filename                                 - Delete a picture"
-    echo "  $0 list                                            - List all pictures"
+    echo "  $0 get filename                              - Download a picture"
+    echo "  $0 post /path/to/file1.jpg [file2.jpg ...]  - Upload picture(s)"
+    echo "  $0 put filename /path/to/newfile.jpg         - Update a picture"
+    echo "  $0 delete filename                           - Delete a picture"
+    echo "  $0 list                                      - List all pictures"
     echo ""
-    echo "Options:"
-    echo "  --replace   Replace existing files instead of creating new ones"
+    echo "Note: Duplicate filenames will be automatically numbered (e.g., image_1.jpg)"
     ;;
 esac

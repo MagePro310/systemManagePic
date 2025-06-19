@@ -1,5 +1,5 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException, Form
-from typing import List, Optional
+from fastapi import APIRouter, File, UploadFile, HTTPException
+from typing import List
 import shutil
 import os
 import mimetypes
@@ -9,16 +9,33 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 router = APIRouter()
 
+def get_unique_filename(directory, filename):
+    """Generate a unique filename by adding numbers if file exists"""
+    base_path = os.path.join(directory, filename)
+    
+    if not os.path.exists(base_path):
+        return filename
+    
+    # Split filename and extension
+    name, ext = os.path.splitext(filename)
+    counter = 1
+    
+    # Keep incrementing until we find a unique name
+    while True:
+        new_filename = f"{name}_{counter}{ext}"
+        new_path = os.path.join(directory, new_filename)
+        
+        if not os.path.exists(new_path):
+            return new_filename
+        
+        counter += 1
+
 @router.post("/pictures")
-async def upload_pictures(
-    files: List[UploadFile] = File(...),
-    replace: bool = Form(False),
-):
+async def upload_pictures(files: List[UploadFile] = File(...)):
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
     
     saved_files = []
-    replaced_files = []
     errors = []
     
     for file in files:
@@ -33,52 +50,33 @@ async def upload_pictures(
                 errors.append(f"{file.filename}: File too large (max 10MB)")
                 continue
             
-            file_path = os.path.join(UPLOAD_DIR, file.filename)
-            file_exists = os.path.exists(file_path)
-            
-            # Handle existing files based on replace option
-            if file_exists and not replace:
-                # Create unique filename
-                base_name, ext = os.path.splitext(file.filename)
-                counter = 1
-                
-                while os.path.exists(file_path):
-                    new_filename = f"{base_name}_{counter}{ext}"
-                    file_path = os.path.join(UPLOAD_DIR, new_filename)
-                    counter += 1
-                
-                final_filename = os.path.basename(file_path)
-            else:
-                final_filename = file.filename
+            # Get unique filename (automatically adds number if exists)
+            unique_filename = get_unique_filename(UPLOAD_DIR, file.filename)
+            file_path = os.path.join(UPLOAD_DIR, unique_filename)
             
             # Save file
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
             
             file_info = {
-                "filename": final_filename,
+                "filename": unique_filename,
                 "original_name": file.filename,
                 "path": file_path,
-                "size": file.size
+                "size": file.size,
+                "renamed": unique_filename != file.filename
             }
             
-            if file_exists and replace:
-                replaced_files.append(file_info)
-            else:
-                saved_files.append(file_info)
+            saved_files.append(file_info)
             
         except Exception as e:
             errors.append(f"{file.filename}: {str(e)}")
     
-    result = {
-        "uploaded": saved_files,
-        "replaced": replaced_files
-    }
+    result = {"uploaded": saved_files}
     
     if errors:
         result["errors"] = errors
     
-    if not saved_files and not replaced_files and errors:
+    if not saved_files and errors:
         raise HTTPException(status_code=400, detail="No files were uploaded successfully")
     
     return result

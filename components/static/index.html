@@ -17,13 +17,13 @@
             <h2>Upload Pictures</h2>
             <div class="upload-area">
                 <input type="file" id="fileInput" multiple accept="image/*">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="replaceCheckbox">
-                    Replace existing files
-                </label>
                 <button onclick="uploadFiles()">Upload</button>
             </div>
             <div id="filePreview" class="file-preview"></div>
+            <div class="upload-info">
+                <small>💡 If a file with the same name exists, a number will be added automatically (e.g.,
+                    image_1.jpg)</small>
+            </div>
         </div>
 
         <!-- Picture List Section -->
