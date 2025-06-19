@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Picture Management System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Picture Management System</h1>
+
+        <!-- Upload Section -->
+        <div class="section">
+            <h2>Upload Pictures</h2>
+            <div class="upload-area">
+                <input type="file" id="fileInput" multiple accept="image/*">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="replaceCheckbox">
+                    Replace existing files
+                </label>
+                <button onclick="uploadFiles()">Upload</button>
+            </div>
+            <div id="filePreview" class="file-preview"></div>
+        </div>
+
+        <!-- Picture List Section -->
+        <div class="section">
+            <h2>Your Pictures</h2>
+            <button onclick="loadPictures()">Refresh List</button>
+            <div id="pictureList" class="picture-grid"></div>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="status" class="status"></div>
+
+        <!-- Hidden file input for replace functionality -->
+        <input type="file" id="replaceFileInput" accept="image/*" style="display: none;">
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
