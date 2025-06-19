@@ -2,6 +2,33 @@ const API_BASE = 'http://localhost:8000';
 let currentReplaceFilename = null;
 let currentReplaceFolder = null;
 
+// Navigation functions
+function showManage() {
+    // Hide search page, show manage page
+    document.getElementById('searchPage').classList.remove('active');
+    document.getElementById('managePage').classList.add('active');
+    
+    // Update nav buttons
+    document.getElementById('searchBtn').classList.remove('active');
+    document.getElementById('manageBtn').classList.add('active');
+    
+    // Load manage page data
+    loadFolders();
+}
+
+function showSearch() {
+    // Hide manage page, show search page
+    document.getElementById('managePage').classList.remove('active');
+    document.getElementById('searchPage').classList.add('active');
+    
+    // Update nav buttons
+    document.getElementById('manageBtn').classList.remove('active');
+    document.getElementById('searchBtn').classList.add('active');
+    
+    // Load search page data
+    loadSearchPage();
+}
+
 // Show status message
 function showStatus(message, type = 'success') {
     const status = document.getElementById('status');
@@ -395,7 +422,8 @@ async function deleteFolder(folderName) {
 
 // Add event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    loadFolders();
+    // Load manage page by default
+    showManage();
     
     const fileInput = document.getElementById('fileInput');
     const replaceFileInput = document.getElementById('replaceFileInput');
