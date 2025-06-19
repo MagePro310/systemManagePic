@@ -13,7 +13,13 @@ def get_picture(filename: str):
     file_path = os.path.join(UPLOAD_DIR, filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Picture not found")
-    return FileResponse(file_path)
+    
+    # Return file with proper headers for download
+    return FileResponse(
+        file_path,
+        media_type='application/octet-stream',
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 @router.put("/pictures/{filename}")
 async def update_picture(filename: str, file: UploadFile = File(...)):

@@ -128,10 +128,16 @@ button:hover {
 
 .btn-download {
   background: #27ae60;
+  transition: all 0.3s ease;
 }
 
 .btn-download:hover {
   background: #229954;
+  transform: translateY(-1px);
+}
+
+.btn-download:active {
+  transform: translateY(0);
 }
 
 .btn-replace {
@@ -219,8 +225,38 @@ button:hover {
   border: 1px solid #ffeaa7;
 }
 
+.status.info {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
 .loading {
   text-align: center;
   color: #666;
   font-style: italic;
+}
+
+/* Add loading animation for download button */
+.btn-download.downloading {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.btn-download.downloading::before {
+  content: "⏳ ";
+}
+
+.section-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.btn-download-all {
+  background: #8e44ad;
+}
+
+.btn-download-all:hover {
+  background: #7d3c98;
 }

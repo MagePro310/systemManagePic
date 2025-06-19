@@ -29,7 +29,10 @@
         <!-- Picture List Section -->
         <div class="section">
             <h2>Your Pictures</h2>
-            <button onclick="loadPictures()">Refresh List</button>
+            <div class="section-controls">
+                <button onclick="loadPictures()">Refresh List</button>
+                <button onclick="downloadAllPictures()" class="btn-download-all">📦 Download All</button>
+            </div>
             <div id="pictureList" class="picture-grid"></div>
         </div>
 
