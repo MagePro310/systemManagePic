@@ -1,6 +1,7 @@
 const API_BASE = 'http://localhost:8000';
 let currentReplaceFilename = null;
 let currentReplaceFolder = null;
+let availableFolders = [];
 
 // Navigation functions
 function showManage() {
@@ -14,6 +15,7 @@ function showManage() {
     
     // Load manage page data
     loadFolders();
+    loadFolderDropdown();
 }
 
 function showSearch() {
@@ -27,6 +29,82 @@ function showSearch() {
     
     // Load search page data
     loadSearchPage();
+}
+
+// Load existing folders for dropdown
+async function loadFolderDropdown() {
+    const existingFolderSelect = document.getElementById('existingFolderSelect');
+    
+    try {
+        const response = await fetch(`${API_BASE}/folders`);
+        const data = await response.json();
+        
+        // Clear existing options
+        existingFolderSelect.innerHTML = '';
+        
+        if (data.folders && Object.keys(data.folders).length > 0) {
+            // Add default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Select a folder...';
+            existingFolderSelect.appendChild(defaultOption);
+            
+            // Add folder options sorted by name
+            availableFolders = Object.keys(data.folders).sort();
+            availableFolders.forEach(folderName => {
+                const option = document.createElement('option');
+                option.value = folderName;
+                option.textContent = `📁 ${folderName} (${data.folders[folderName].count} pictures)`;
+                existingFolderSelect.appendChild(option);
+            });
+            
+            existingFolderSelect.disabled = false;
+        } else {
+            // No folders available
+            const noFoldersOption = document.createElement('option');
+            noFoldersOption.value = '';
+            noFoldersOption.textContent = 'No folders available - create a new one';
+            existingFolderSelect.appendChild(noFoldersOption);
+            existingFolderSelect.disabled = true;
+            
+            // Switch to new folder option
+            document.querySelector('input[name="folderOption"][value="new"]').checked = true;
+            toggleFolderOptions();
+        }
+    } catch (error) {
+        console.error('Error loading folders for dropdown:', error);
+        existingFolderSelect.innerHTML = '<option value="">Error loading folders</option>';
+        existingFolderSelect.disabled = true;
+    }
+}
+
+// Toggle between existing and new folder options
+function toggleFolderOptions() {
+    const selectedOption = document.querySelector('input[name="folderOption"]:checked').value;
+    const existingFolderSelect = document.getElementById('existingFolderSelect');
+    const newFolderNameInput = document.getElementById('newFolderNameInput');
+    
+    if (selectedOption === 'existing') {
+        existingFolderSelect.disabled = false;
+        newFolderNameInput.disabled = true;
+        newFolderNameInput.value = '';
+    } else {
+        existingFolderSelect.disabled = true;
+        existingFolderSelect.value = '';
+        newFolderNameInput.disabled = false;
+        newFolderNameInput.focus();
+    }
+}
+
+// Get selected folder name for upload
+function getSelectedFolderName() {
+    const selectedOption = document.querySelector('input[name="folderOption"]:checked').value;
+    
+    if (selectedOption === 'existing') {
+        return document.getElementById('existingFolderSelect').value;
+    } else {
+        return document.getElementById('newFolderNameInput').value.trim();
+    }
 }
 
 // Show status message
@@ -66,6 +144,7 @@ async function createFolder() {
             showStatus(`Folder "${result.folder_name}" created successfully!`);
             folderNameInput.value = '';
             loadFolders();
+            loadFolderDropdown(); // Refresh the dropdown
         } else {
             showStatus('Failed to create folder: ' + (result.detail || 'Unknown error'), 'error');
         }
@@ -121,14 +200,27 @@ function removeFile(index) {
     showFilePreview();
 }
 
-// Upload files to folder
+// Upload files to selected folder
 async function uploadFiles() {
     const fileInput = document.getElementById('fileInput');
-    const folderNameInput = document.getElementById('folderNameInput');
     const files = fileInput.files;
     
     if (files.length === 0) {
         showStatus('Please select files to upload', 'error');
+        return;
+    }
+    
+    const folderName = getSelectedFolderName();
+    
+    // Validate folder selection
+    const selectedOption = document.querySelector('input[name="folderOption"]:checked').value;
+    if (selectedOption === 'existing' && !folderName) {
+        showStatus('Please select an existing folder or create a new one', 'error');
+        return;
+    }
+    
+    if (selectedOption === 'new' && folderName && availableFolders.includes(folderName)) {
+        showStatus('Folder name already exists. Choose a different name or select the existing folder.', 'error');
         return;
     }
     
@@ -142,7 +234,6 @@ async function uploadFiles() {
         formData.append('files', file);
     }
     
-    const folderName = folderNameInput.value.trim();
     if (folderName) {
         formData.append('folder_name', folderName);
     }
@@ -175,10 +266,17 @@ async function uploadFiles() {
                 showStatus(message, 'warning');
             }
             
+            // Clear form
             fileInput.value = '';
-            folderNameInput.value = '';
+            document.getElementById('newFolderNameInput').value = '';
+            document.getElementById('existingFolderSelect').value = '';
+            document.querySelector('input[name="folderOption"][value="existing"]').checked = true;
+            toggleFolderOptions();
             document.getElementById('filePreview').innerHTML = '';
+            
+            // Refresh data
             loadFolders();
+            loadFolderDropdown();
         } else {
             showStatus('Upload failed: ' + (result.detail || 'Unknown error'), 'error');
         }
@@ -388,6 +486,7 @@ async function deletePicture(folderName, filename) {
         if (response.ok) {
             showStatus(`${filename} deleted successfully!`);
             loadFolders();
+            loadFolderDropdown(); // Refresh dropdown to update picture counts
         } else {
             showStatus('Delete failed', 'error');
         }
@@ -412,6 +511,7 @@ async function deleteFolder(folderName) {
         if (response.ok) {
             showStatus(`Folder "${folderName}" and ${result.files_deleted} file(s) deleted successfully!`);
             loadFolders();
+            loadFolderDropdown(); // Refresh dropdown to remove deleted folder
         } else {
             showStatus('Delete folder failed: ' + (result.detail || 'Unknown error'), 'error');
         }
@@ -428,6 +528,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('fileInput');
     const replaceFileInput = document.getElementById('replaceFileInput');
     const newFolderInput = document.getElementById('newFolderInput');
+    const newFolderNameInput = document.getElementById('newFolderNameInput');
     
     fileInput.addEventListener('change', showFilePreview);
     replaceFileInput.addEventListener('change', handleReplaceFile);
@@ -436,6 +537,13 @@ document.addEventListener('DOMContentLoaded', function() {
     newFolderInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             createFolder();
+        }
+    });
+    
+    // Enter key support for new folder name in upload
+    newFolderNameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            uploadFiles();
         }
     });
 });

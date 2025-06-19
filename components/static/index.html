@@ -29,12 +29,30 @@
                 <h2>Upload Pictures</h2>
                 <div class="upload-area">
                     <input type="file" id="fileInput" multiple accept="image/*">
-                    <input type="text" id="folderNameInput" placeholder="Folder name (optional)" maxlength="50">
+                    <div class="folder-selection">
+                        <label class="folder-option">
+                            <input type="radio" name="folderOption" value="existing" checked
+                                onchange="toggleFolderOptions()">
+                            <span>Choose existing folder:</span>
+                        </label>
+                        <select id="existingFolderSelect" class="folder-dropdown">
+                            <option value="">Loading folders...</option>
+                        </select>
+                    </div>
+                    <div class="folder-selection">
+                        <label class="folder-option">
+                            <input type="radio" name="folderOption" value="new" onchange="toggleFolderOptions()">
+                            <span>Create new folder:</span>
+                        </label>
+                        <input type="text" id="newFolderNameInput" placeholder="Enter new folder name" maxlength="50"
+                            disabled>
+                    </div>
                     <button onclick="uploadFiles()">Upload</button>
                 </div>
                 <div id="filePreview" class="file-preview"></div>
                 <div class="upload-info">
-                    <small>💡 If no folder name is provided, a timestamp folder will be created automatically</small>
+                    <small>💡 Choose an existing folder or create a new one. If no folder is selected, a timestamp
+                        folder will be created automatically</small>
                 </div>
             </div>
 
