@@ -173,11 +173,34 @@ class ApiService {
      * @returns {Promise} - Delete result
      */
     async deleteFolder(folderName) {
-        const url = `${this.baseUrl}${API_CONFIG.ENDPOINTS.FOLDERS}/${encodeURIComponent(folderName)}`;
+        console.log('=== API DELETE FOLDER START ===');
+        console.log('Folder name:', folderName);
         
-        return await this.makeRequest(url, {
-            method: 'DELETE'
-        });
+        const url = `${this.baseUrl}${API_CONFIG.ENDPOINTS.FOLDERS}/${encodeURIComponent(folderName)}`;
+        console.log('Delete URL:', url);
+        
+        try {
+            const result = await this.makeRequest(url, {
+                method: 'DELETE'
+            });
+            
+            console.log('=== API DELETE FOLDER SUCCESS ===');
+            console.log('Result:', result);
+            return result;
+            
+        } catch (error) {
+            console.log('=== API DELETE FOLDER ERROR ===');
+            console.error('Delete folder error:', error);
+            console.log('Error details:', {
+                name: error.name,
+                message: error.message,
+                status: error.response?.status,
+                statusText: error.response?.statusText
+            });
+            
+            // Re-throw the error so it can be handled by the caller
+            throw error;
+        }
     }
 
     /**

@@ -56,12 +56,14 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 0;
+  gap: 1rem;
 }
 
 .logo {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .logo i {
@@ -73,11 +75,13 @@ body {
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--text-primary);
+  margin: 0;
 }
 
 .nav {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .nav-btn {

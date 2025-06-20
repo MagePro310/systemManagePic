@@ -4,6 +4,7 @@
   border-radius: var(--radius-lg);
   padding: 2rem;
   box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
 }
 
 .upload-section h2 {
@@ -11,6 +12,7 @@
   color: var(--text-primary);
   font-size: 1.5rem;
   font-weight: 600;
+  text-align: center;
 }
 
 .upload-area {
@@ -21,6 +23,7 @@
   transition: var(--transition);
   cursor: pointer;
   margin-bottom: 2rem;
+  background-color: var(--background-color);
 }
 
 .upload-area:hover,
@@ -123,6 +126,7 @@
   border-radius: var(--radius-lg);
   padding: 2rem;
   box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
 }
 
 .gallery-header {
@@ -130,18 +134,23 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .gallery-header h2 {
   color: var(--text-primary);
   font-size: 1.5rem;
   font-weight: 600;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .gallery-controls {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .folder-select {
@@ -150,8 +159,9 @@
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
+  align-items: start;
 }
 
 .gallery-item {
@@ -161,6 +171,10 @@
   box-shadow: var(--shadow-sm);
   transition: var(--transition);
   cursor: pointer;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .gallery-item:hover {
@@ -176,6 +190,9 @@
 
 .gallery-info {
   padding: 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .gallery-info h4 {
@@ -183,17 +200,20 @@
   color: var(--text-primary);
   font-size: 0.875rem;
   font-weight: 500;
+  word-wrap: break-word;
+  line-height: 1.3;
 }
 
 .gallery-info p {
   color: var(--text-secondary);
   font-size: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
 .gallery-actions {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.75rem;
+  margin-top: auto;
 }
 
 .gallery-actions .btn {
@@ -207,6 +227,7 @@
   border-radius: var(--radius-lg);
   padding: 2rem;
   box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
 }
 
 .folders-header {
@@ -214,12 +235,16 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .folders-header h2 {
   color: var(--text-primary);
   font-size: 1.5rem;
   font-weight: 600;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .folders-header-actions {
@@ -287,17 +312,22 @@
 
 .folders-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.5rem;
+  align-items: start;
 }
 
 .folder-item {
-  background-color: var(--background-color);
+  background-color: var(--surface-color);
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   transition: var(--transition);
   cursor: pointer;
   border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-shadow: var(--shadow-sm);
 }
 
 .folder-item:hover {
@@ -307,42 +337,52 @@
 
 .folder-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 1rem;
+  min-height: 2.5rem;
 }
 
 .folder-title {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .folder-title i {
   font-size: 1.5rem;
   color: var(--primary-color);
+  flex-shrink: 0;
 }
 
 .folder-title h3 {
   color: var(--text-primary);
   font-size: 1.125rem;
   font-weight: 600;
+  word-wrap: break-word;
+  line-height: 1.3;
+  margin: 0;
 }
 
 .folder-count {
   background-color: var(--primary-color);
   color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-sm);
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-md);
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .folder-preview {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  min-height: 60px;
 }
 
 .folder-preview-image {
@@ -360,17 +400,21 @@
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
+  font-size: 0.75rem;
 }
 
 .folder-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  margin-top: auto;
 }
 
 .folder-actions .btn {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
   flex: 1;
+  justify-content: center;
+  font-weight: 500;
 }
 
 /* Modal Components */

@@ -4,6 +4,7 @@ class PictureManagerApp {
     constructor() {
         this.currentTab = 'upload';
         this.isInitialized = false;
+        this.preserveCurrentTab = false; // Flag to preserve current tab during operations
         this.init();
     }
 
@@ -72,8 +73,9 @@ class PictureManagerApp {
             // Load initial data for all components
             await this.loadInitialData();
             
-            // Set default tab
-            this.switchTab(this.currentTab);
+            // Set default tab (but preserve current tab if we're already on folders and doing an operation)
+            const tabToSet = this.preserveCurrentTab && this.currentTab === 'folders' ? 'folders' : this.currentTab;
+            this.switchTab(tabToSet);
             
             this.isInitialized = true;
             
@@ -332,7 +334,30 @@ class PictureManagerApp {
         window.galleryManager?.refresh();
         window.foldersManager?.refresh();
         window.toastManager?.hideAll();
+        
+        // Don't switch to upload if we're preserving the current tab and it's folders
+        if (this.preserveCurrentTab && this.currentTab === 'folders') {
+            console.log('App reset called but preserving folders tab');
+            return;
+        }
+        
         this.switchTab('upload');
+    }
+
+    /**
+     * Preserve current tab during operations (prevents automatic reset to upload)
+     */
+    preserveTab() {
+        this.preserveCurrentTab = true;
+        console.log('Tab preservation enabled');
+    }
+
+    /**
+     * Stop preserving current tab
+     */
+    stopPreservingTab() {
+        this.preserveCurrentTab = false;
+        console.log('Tab preservation disabled');
     }
 }
 
