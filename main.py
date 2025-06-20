@@ -18,9 +18,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static files
-app.mount("/static", StaticFiles(directory="components/static"), name="static")
-
 app.include_router(upload_router)
 app.include_router(list_router)
 app.include_router(picture_router)
@@ -28,4 +25,3 @@ app.include_router(picture_router)
 @app.get("/")
 def read_root():
     return {"message": "Picture Management API"}
-
