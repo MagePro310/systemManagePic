@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Picture Management System</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo">
+                        <i class="fas fa-images"></i>
+                        <h1>Picture Manager</h1>
+                    </div>
+                    <nav class="nav">
+                        <button class="nav-btn active" data-tab="upload">
+                            <i class="fas fa-upload"></i>
+                            Upload
+                        </button>
+                        <button class="nav-btn" data-tab="gallery">
+                            <i class="fas fa-folder-open"></i>
+                            Gallery
+                        </button>
+                        <button class="nav-btn" data-tab="folders">
+                            <i class="fas fa-folder"></i>
+                            Folders
+                        </button>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <div class="container">
+                <!-- Upload Tab -->
+                <section id="upload-tab" class="tab-content active">
+                    <div class="upload-section">
+                        <h2>Upload Pictures</h2>
+                        <div class="upload-area" id="upload-area">
+                            <div class="upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <p class="upload-text">Drag & drop your images here or click to browse</p>
+                            <input type="file" id="file-input" multiple accept="image/*" hidden>
+                            <button class="upload-btn" id="browse-btn">Browse Files</button>
+                        </div>
+
+                        <div class="upload-options">
+                            <div class="form-group">
+                                <label for="folder-name">Folder Name (optional):</label>
+                                <input type="text" id="folder-name"
+                                    placeholder="Enter folder name or leave empty for auto-generated">
+                            </div>
+                        </div>
+
+                        <div class="file-preview" id="file-preview"></div>
+
+                        <div class="upload-actions">
+                            <button class="btn btn-primary" id="upload-files" disabled>
+                                <i class="fas fa-upload"></i>
+                                Upload Files
+                            </button>
+                            <button class="btn btn-secondary" id="clear-files">
+                                <i class="fas fa-times"></i>
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Gallery Tab -->
+                <section id="gallery-tab" class="tab-content">
+                    <div class="gallery-section">
+                        <div class="gallery-header">
+                            <h2>Gallery</h2>
+                            <div class="gallery-controls">
+                                <select id="folder-filter" class="folder-select">
+                                    <option value="">All Folders</option>
+                                </select>
+                                <button class="btn btn-secondary" id="refresh-gallery">
+                                    <i class="fas fa-sync-alt"></i>
+                                    Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="gallery-grid" id="gallery-grid">
+                            <!-- Gallery items will be dynamically loaded here -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Folders Tab -->
+                <section id="folders-tab" class="tab-content">
+                    <div class="folders-section">
+                        <div class="folders-header">
+                            <h2>Folders</h2>
+                            <button class="btn btn-secondary" id="refresh-folders">
+                                <i class="fas fa-sync-alt"></i>
+                                Refresh
+                            </button>
+                        </div>
+
+                        <div class="folders-grid" id="folders-grid">
+                            <!-- Folder items will be dynamically loaded here -->
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading...</p>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div class="toast-container" id="toast-container"></div>
+
+        <!-- Image Modal -->
+        <div class="modal" id="image-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modal-title">Image Preview</h3>
+                    <button class="modal-close" id="modal-close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <img id="modal-image" src="" alt="">
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" id="download-image">
+                            <i class="fas fa-download"></i>
+                            Download
+                        </button>
+                        <button class="btn btn-danger" id="delete-image">
+                            <i class="fas fa-trash"></i>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils/constants.js"></script>
+    <script src="js/utils/helpers.js"></script>
+    <script src="js/services/api.js"></script>
+    <script src="js/components/upload.js"></script>
+    <script src="js/components/gallery.js"></script>
+    <script src="js/components/folders.js"></script>
+    <script src="js/components/modal.js"></script>
+    <script src="js/components/toast.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
