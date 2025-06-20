@@ -1,0 +1,892 @@
+// Folders Component
+
+class FoldersManager {
+    constructor() {
+        this.folders = {};
+        this.isLoading = false;
+        this.bulkSelectMode = false;
+        this.selectedFolders = new Set();
+        this.init();
+    }
+        this.selectedFolders = new Set();
+        this.init();
+    }
+
+    init() {
+        this.setupElements();
+        this.setupEventListeners();
+        // Load folders immediately
+        this.loadFolders();
+    }
+
+    setupElements() {
+        this.foldersGrid = document.getElementById('folders-grid');
+        this.refreshBtn = document.getElementById('refresh-folders');
+        
+        // Add bulk selection controls to folders header
+        const foldersHeader = document.querySelector('.folders-header');
+        const foldersSection = document.querySelector('.folders-section');
+        
+        // Create bulk actions bar
+        this.bulkActionsBar = createElement('div', { className: 'bulk-actions' });
+        
+        const bulkActionsLeft = createElement('div', { className: 'bulk-actions-left' });
+        this.selectedCountSpan = createElement('span', { className: 'selected-count' });
+        bulkActionsLeft.appendChild(this.selectedCountSpan);
+        
+        const bulkActionsRight = createElement('div', { className: 'bulk-actions-right' });
+        
+        const bulkDownloadBtn = createElement('button', {
+            className: 'btn btn-secondary',
+            innerHTML: '<i class="fas fa-download"></i> Download Selected'
+        });
+        
+        const bulkDeleteBtn = createElement('button', {
+            className: 'btn btn-danger',
+            innerHTML: '<i class="fas fa-trash"></i> Delete Selected'
+        });
+        
+        const cancelBulkBtn = createElement('button', {
+            className: 'btn btn-secondary',
+            innerHTML: '<i class="fas fa-times"></i> Cancel'
+        });
+        
+        bulkActionsRight.appendChild(bulkDownloadBtn);
+        bulkActionsRight.appendChild(bulkDeleteBtn);
+        bulkActionsRight.appendChild(cancelBulkBtn);
+        
+        this.bulkActionsBar.appendChild(bulkActionsLeft);
+        this.bulkActionsBar.appendChild(bulkActionsRight);
+        
+        // Insert bulk actions before folders grid
+        foldersSection.insertBefore(this.bulkActionsBar, this.foldersGrid);
+        
+        // Add bulk select button to header
+        const headerActions = foldersHeader.querySelector('.folders-header') || foldersHeader;
+        const existingControls = headerActions.querySelector('button');
+        
+        this.bulkSelectBtn = createElement('button', {
+            className: 'btn btn-secondary',
+            innerHTML: '<i class="fas fa-check-square"></i> Select'
+        });
+        
+        if (existingControls) {
+            existingControls.parentNode.insertBefore(this.bulkSelectBtn, existingControls);
+        } else {
+            headerActions.appendChild(this.bulkSelectBtn);
+        }
+        
+        // Event listeners for bulk actions
+        this.bulkSelectBtn.addEventListener('click', () => this.toggleBulkSelect());
+        cancelBulkBtn.addEventListener('click', () => this.exitBulkSelect());
+        bulkDownloadBtn.addEventListener('click', () => this.bulkDownload());
+        bulkDeleteBtn.addEventListener('click', () => this.bulkDelete());
+    }
+
+    setupEventListeners() {
+        // Refresh button
+        this.refreshBtn.addEventListener('click', () => {
+            this.refresh();
+        });
+
+        // Listen for upload completion
+        window.eventBus.on(EVENTS.UPLOAD_COMPLETE, () => {
+            this.refresh();
+        });
+    }
+
+    /**
+     * Load folders from server
+     */
+    async loadFolders() {
+        if (this.isLoading) return;
+
+        this.isLoading = true;
+        this.showLoading();
+
+        try {
+            const response = await window.apiService.getFolders();
+            this.folders = response.folders || {};
+            this.renderFolders();
+        } catch (error) {
+            handleError(error, 'folders load');
+            this.showError('Failed to load folders');
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    /**
+     * Render folders in the grid
+     */
+    renderFolders() {
+        this.foldersGrid.innerHTML = '';
+
+        const folderNames = Object.keys(this.folders);
+        
+        if (folderNames.length === 0) {
+            this.showEmptyState();
+            return;
+        }
+
+        // Sort folders by name
+        folderNames.sort().forEach(folderName => {
+            const folderData = this.folders[folderName];
+            const folderElement = this.createFolderElement(folderName, folderData);
+            this.foldersGrid.appendChild(folderElement);
+        });
+    }
+
+    /**
+     * Create folder element
+     * @param {string} folderName - Folder name
+     * @param {object} folderData - Folder data
+     * @returns {Element} - Folder element
+     */
+    createFolderElement(folderName, folderData) {
+        const item = createElement('div', { 
+            className: 'folder-item',
+            'data-folder': folderName
+        });
+        item.setAttribute('data-folder', folderName);
+        
+        // Folder header
+        const header = createElement('div', { className: 'folder-header' });
+        
+        const title = createElement('div', { className: 'folder-title' });
+        title.appendChild(createElement('i', { className: 'fas fa-folder' }));
+        title.appendChild(createElement('h3', {}, escapeHtml(folderName)));
+        
+        const count = createElement('span', { 
+            className: 'folder-count',
+            textContent: folderData.count || 0
+        });
+        
+        header.appendChild(title);
+        header.appendChild(count);
+
+        // Folder preview (show first 3 images)
+        const preview = createElement('div', { className: 'folder-preview' });
+        const pictures = folderData.pictures || [];
+        
+        for (let i = 0; i < 3; i++) {
+            if (i < pictures.length) {
+                const picture = pictures[i];
+                const img = createElement('img', {
+                    className: 'folder-preview-image',
+                    src: window.apiService.getPictureUrl(folderName, picture.filename),
+                    alt: picture.filename,
+                    loading: 'lazy'
+                });
+                
+                // Handle image load error
+                img.addEventListener('error', () => {
+                    img.style.display = 'none';
+                    const placeholder = createElement('div', {
+                        className: 'folder-preview-placeholder',
+                        innerHTML: '<i class="fas fa-image"></i>'
+                    });
+                    preview.appendChild(placeholder);
+                });
+                
+                preview.appendChild(img);
+            } else {
+                const placeholder = createElement('div', {
+                    className: 'folder-preview-placeholder',
+                    innerHTML: '<i class="fas fa-plus"></i>'
+                });
+                preview.appendChild(placeholder);
+            }
+        }
+
+        // Folder actions
+        const actions = createElement('div', { className: 'folder-actions' });
+        
+        const viewBtn = createElement('button', {
+            className: 'btn btn-primary',
+            innerHTML: '<i class="fas fa-eye"></i> View'
+        });
+        
+        const downloadBtn = createElement('button', {
+            className: 'btn btn-secondary',
+            innerHTML: '<i class="fas fa-download"></i> Download'
+        });
+        
+        // Menu button with dropdown
+        const menuContainer = createElement('div', { className: 'folder-menu' });
+        const menuBtn = createElement('button', {
+            className: 'folder-menu-btn',
+            innerHTML: '<i class="fas fa-ellipsis-v"></i>',
+            title: 'More options'
+        });
+        
+        const menuDropdown = createElement('div', { className: 'folder-menu-dropdown' });
+        
+        // Menu items
+        const renameItem = createElement('button', {
+            className: 'folder-menu-item',
+            innerHTML: '<i class="fas fa-edit"></i> Rename'
+        });
+        
+        const copyItem = createElement('button', {
+            className: 'folder-menu-item',
+            innerHTML: '<i class="fas fa-copy"></i> Duplicate'
+        });
+        
+        const infoItem = createElement('button', {
+            className: 'folder-menu-item',
+            innerHTML: '<i class="fas fa-info-circle"></i> Info'
+        });
+        
+        const deleteItem = createElement('button', {
+            className: 'folder-menu-item danger',
+            innerHTML: '<i class="fas fa-trash"></i> Delete'
+        });
+        
+        menuDropdown.appendChild(renameItem);
+        menuDropdown.appendChild(copyItem);
+        menuDropdown.appendChild(infoItem);
+        menuDropdown.appendChild(deleteItem);
+        
+        menuContainer.appendChild(menuBtn);
+        menuContainer.appendChild(menuDropdown);
+
+        // Event listeners
+        viewBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.viewFolder(folderName);
+        });
+
+        downloadBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.downloadFolder(folderName, folderData);
+        });
+        
+        // Menu toggle
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleMenu(menuDropdown);
+        });
+        
+        // Menu item handlers
+        renameItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.startRename(folderName, title.querySelector('h3'));
+            menuDropdown.classList.remove('show');
+        });
+        
+        copyItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.duplicateFolder(folderName);
+            menuDropdown.classList.remove('show');
+        });
+        
+        infoItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showFolderInfo(folderName, item);
+            menuDropdown.classList.remove('show');
+        });
+        
+        deleteItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.deleteFolder(folderName);
+            menuDropdown.classList.remove('show');
+        });
+
+        // Click to view folder
+        item.addEventListener('click', () => {
+            this.viewFolder(folderName);
+        });
+        
+        // Right-click context menu
+        item.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            this.showContextMenu(e, folderName, folderData);
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!menuContainer.contains(e.target)) {
+                menuDropdown.classList.remove('show');
+            }
+        });
+
+        actions.appendChild(viewBtn);
+        actions.appendChild(downloadBtn);
+        actions.appendChild(menuContainer);
+
+        item.appendChild(header);
+        item.appendChild(preview);
+        item.appendChild(actions);
+
+        return item;
+    }
+
+    /**
+     * View folder (switch to gallery with filter)
+     * @param {string} folderName - Folder name
+     */
+    viewFolder(folderName) {
+        // Switch to gallery tab
+        const galleryTab = document.querySelector('[data-tab="gallery"]');
+        if (galleryTab) {
+            galleryTab.click();
+        }
+        
+        // Set folder filter
+        setTimeout(() => {
+            const folderFilter = document.getElementById('folder-filter');
+            if (folderFilter) {
+                folderFilter.value = folderName;
+                folderFilter.dispatchEvent(new Event('change'));
+            }
+        }, 100);
+    }
+
+    /**
+     * Download all pictures in folder
+     * @param {string} folderName - Folder name
+     * @param {object} folderData - Folder data
+     */
+    async downloadFolder(folderName, folderData) {
+        const pictures = folderData.pictures || [];
+        
+        if (pictures.length === 0) {
+            window.toastManager?.show('info', 'No Pictures', 'This folder is empty');
+            return;
+        }
+
+        const confirmed = confirm(`Download all ${pictures.length} pictures from "${folderName}"?`);
+        if (!confirmed) return;
+
+        try {
+            toggleLoading(true);
+            
+            let downloaded = 0;
+            let failed = 0;
+            
+            for (const picture of pictures) {
+                try {
+                    await window.apiService.downloadPicture(folderName, picture.filename);
+                    downloaded++;
+                } catch (error) {
+                    console.error(`Failed to download ${picture.filename}:`, error);
+                    failed++;
+                }
+            }
+            
+            if (downloaded > 0) {
+                window.toastManager?.show('success', 'Download Complete', 
+                    `Downloaded ${downloaded} pictures${failed > 0 ? `, ${failed} failed` : ''}`);
+            } else {
+                window.toastManager?.show('error', 'Download Failed', 
+                    'Failed to download any pictures');
+            }
+            
+        } catch (error) {
+            handleError(error, 'download folder');
+        } finally {
+            toggleLoading(false);
+        }
+    }
+
+    /**
+     * Delete entire folder
+     * @param {string} folderName - Folder name
+     */
+    async deleteFolder(folderName) {
+        const folderData = this.folders[folderName];
+        const pictureCount = folderData?.count || 0;
+        
+        const confirmed = confirm(
+            `Are you sure you want to delete the folder "${folderName}" and all ${pictureCount} pictures in it?\n\nThis action cannot be undone.`
+        );
+        if (!confirmed) return;
+
+        try {
+            toggleLoading(true);
+            await window.apiService.deleteFolder(folderName);
+            
+            window.toastManager?.show('success', 'Folder Deleted', 
+                `Deleted folder "${folderName}" and ${pictureCount} pictures`);
+            
+            // Remove from local data
+            delete this.folders[folderName];
+            this.renderFolders();
+            
+            // Update other components
+            window.galleryManager?.refresh();
+            
+        } catch (error) {
+            handleError(error, 'delete folder');
+        } finally {
+            toggleLoading(false);
+        }
+    }
+
+    /**
+     * Show loading state
+     */
+    showLoading() {
+        this.foldersGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <h3>Loading Folders...</h3>
+                <p>Please wait while we load your folders.</p>
+            </div>
+        `;
+    }
+
+    /**
+     * Show empty state
+     */
+    showEmptyState() {
+        this.foldersGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-folder-open"></i>
+                <h3>No Folders Found</h3>
+                <p>Upload some pictures to create your first folder!</p>
+            </div>
+        `;
+    }
+
+    /**
+     * Show error state
+     * @param {string} message - Error message
+     */
+    showError(message) {
+        this.foldersGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Error Loading Folders</h3>
+                <p>${escapeHtml(message)}</p>
+                <button class="btn btn-primary" onclick="window.foldersManager.refresh()">
+                    <i class="fas fa-retry"></i> Try Again
+                </button>
+            </div>
+        `;
+    }
+
+    /**
+     * Refresh folders
+     */
+    refresh() {
+        this.loadFolders();
+    }
+
+    /**
+     * Get current state
+     * @returns {object} - Current state
+     */
+    getState() {
+        const folderNames = Object.keys(this.folders);
+        const totalPictures = folderNames.reduce((total, name) => {
+            return total + (this.folders[name].count || 0);
+        }, 0);
+
+        return {
+            folderCount: folderNames.length,
+            totalPictures,
+            isLoading: this.isLoading,
+            folders: Object.keys(this.folders)
+        };
+    }
+
+    /**
+     * Toggle menu dropdown
+     * @param {Element} dropdown - Menu dropdown element
+     */
+    toggleMenu(dropdown) {
+        // Close all other dropdowns first
+        document.querySelectorAll('.folder-menu-dropdown.show').forEach(menu => {
+            if (menu !== dropdown) {
+                menu.classList.remove('show');
+            }
+        });
+        
+        dropdown.classList.toggle('show');
+    }
+
+    /**
+     * Start folder rename
+     * @param {string} folderName - Current folder name
+     * @param {Element} titleElement - Title element to replace
+     */
+    startRename(folderName, titleElement) {
+        const input = createElement('input', {
+            className: 'folder-rename-input',
+            type: 'text',
+            value: folderName
+        });
+        
+        const actions = createElement('div', { className: 'folder-rename-actions' });
+        
+        const saveBtn = createElement('button', {
+            className: 'btn btn-primary',
+            innerHTML: '<i class="fas fa-check"></i> Save'
+        });
+        
+        const cancelBtn = createElement('button', {
+            className: 'btn btn-secondary',
+            innerHTML: '<i class="fas fa-times"></i> Cancel'
+        });
+        
+        actions.appendChild(saveBtn);
+        actions.appendChild(cancelBtn);
+        
+        // Replace title with input
+        const originalTitle = titleElement.textContent;
+        titleElement.innerHTML = '';
+        titleElement.appendChild(input);
+        titleElement.appendChild(actions);
+        
+        input.focus();
+        input.select();
+        
+        // Save rename
+        const saveRename = async () => {
+            const newName = input.value.trim();
+            if (!newName || newName === folderName) {
+                cancelRename();
+                return;
+            }
+            
+            try {
+                toggleLoading(true);
+                await window.apiService.renameFolder(folderName, newName);
+                
+                window.toastManager?.show('success', 'Folder Renamed', 
+                    `Renamed "${folderName}" to "${newName}"`);
+                
+                this.refresh();
+                window.galleryManager?.refresh();
+                
+            } catch (error) {
+                handleError(error, 'rename folder');
+                cancelRename();
+            } finally {
+                toggleLoading(false);
+            }
+        };
+        
+        // Cancel rename
+        const cancelRename = () => {
+            titleElement.innerHTML = originalTitle;
+        };
+        
+        // Event listeners
+        saveBtn.addEventListener('click', saveRename);
+        cancelBtn.addEventListener('click', cancelRename);
+        
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                saveRename();
+            } else if (e.key === 'Escape') {
+                cancelRename();
+            }
+        });
+        
+        input.addEventListener('blur', cancelRename);
+    }
+
+    /**
+     * Duplicate folder
+     * @param {string} folderName - Folder to duplicate
+     */
+    async duplicateFolder(folderName) {
+        const newName = prompt(`Enter name for the duplicate of "${folderName}":`, `${folderName} - Copy`);
+        if (!newName || newName.trim() === '') return;
+        
+        try {
+            toggleLoading(true);
+            const result = await window.apiService.copyFolder(folderName, newName.trim());
+            
+            window.toastManager?.show('success', 'Folder Duplicated', 
+                `Created "${result.new_name}" with ${result.files_copied} files`);
+            
+            this.refresh();
+            
+        } catch (error) {
+            handleError(error, 'duplicate folder');
+        } finally {
+            toggleLoading(false);
+        }
+    }
+
+    /**
+     * Show detailed folder information
+     * @param {string} folderName - Folder name
+     * @param {Element} folderElement - Folder element to append info to
+     */
+    async showFolderInfo(folderName, folderElement) {
+        try {
+            // Check if info panel already exists
+            const existingPanel = folderElement.querySelector('.folder-info-panel');
+            if (existingPanel) {
+                existingPanel.remove();
+                return;
+            }
+            
+            toggleLoading(true);
+            const info = await window.apiService.getFolderInfo(folderName);
+            
+            const infoPanel = createElement('div', { className: 'folder-info-panel' });
+            
+            const title = createElement('h4', {}, 'Folder Information');
+            infoPanel.appendChild(title);
+            
+            const grid = createElement('div', { className: 'folder-info-grid' });
+            
+            // Total size
+            const sizeItem = createElement('div', { className: 'folder-info-item' });
+            sizeItem.appendChild(createElement('span', { 
+                className: 'value',
+                textContent: formatFileSize(info.total_size)
+            }));
+            sizeItem.appendChild(createElement('span', { 
+                className: 'label',
+                textContent: 'Total Size'
+            }));
+            grid.appendChild(sizeItem);
+            
+            // Picture count
+            const countItem = createElement('div', { className: 'folder-info-item' });
+            countItem.appendChild(createElement('span', { 
+                className: 'value',
+                textContent: info.count
+            }));
+            countItem.appendChild(createElement('span', { 
+                className: 'label',
+                textContent: 'Pictures'
+            }));
+            grid.appendChild(countItem);
+            
+            // Created date
+            const createdItem = createElement('div', { className: 'folder-info-item' });
+            createdItem.appendChild(createElement('span', { 
+                className: 'value',
+                textContent: new Date(info.created).toLocaleDateString()
+            }));
+            createdItem.appendChild(createElement('span', { 
+                className: 'label',
+                textContent: 'Created'
+            }));
+            grid.appendChild(createdItem);
+            
+            // Modified date
+            const modifiedItem = createElement('div', { className: 'folder-info-item' });
+            modifiedItem.appendChild(createElement('span', { 
+                className: 'value',
+                textContent: new Date(info.modified).toLocaleDateString()
+            }));
+            modifiedItem.appendChild(createElement('span', { 
+                className: 'label',
+                textContent: 'Modified'
+            }));
+            grid.appendChild(modifiedItem);
+            
+            infoPanel.appendChild(grid);
+            folderElement.appendChild(infoPanel);
+            
+        } catch (error) {
+            handleError(error, 'get folder info');
+        } finally {
+            toggleLoading(false);
+        }
+    }
+
+    /**
+     * Show context menu
+     * @param {Event} e - Right-click event
+     * @param {string} folderName - Folder name
+     * @param {object} folderData - Folder data
+     */
+    showContextMenu(e, folderName, folderData) {
+        // Remove existing context menu
+        const existingMenu = document.querySelector('.folder-context-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+        
+        const contextMenu = createElement('div', { className: 'folder-context-menu' });
+        
+        const items = [
+            { icon: 'fas fa-eye', text: 'View Folder', action: () => this.viewFolder(folderName) },
+            { icon: 'fas fa-edit', text: 'Rename', action: () => this.startRename(folderName, document.querySelector(`[data-folder="${folderName}"] h3`)) },
+            { icon: 'fas fa-copy', text: 'Duplicate', action: () => this.duplicateFolder(folderName) },
+            { icon: 'fas fa-download', text: 'Download All', action: () => this.downloadFolder(folderName, folderData) },
+            { icon: 'fas fa-info-circle', text: 'Folder Info', action: () => this.showFolderInfo(folderName, document.querySelector(`[data-folder="${folderName}"]`)) },
+            { separator: true },
+            { icon: 'fas fa-trash', text: 'Delete', action: () => this.deleteFolder(folderName), danger: true }
+        ];
+        
+        items.forEach(item => {
+            if (item.separator) {
+                const separator = createElement('div', { className: 'context-menu-separator' });
+                contextMenu.appendChild(separator);
+            } else {
+                const menuItem = createElement('button', {
+                    className: `context-menu-item ${item.danger ? 'danger' : ''}`,
+                    innerHTML: `<i class="${item.icon}"></i> ${item.text}`
+                });
+                
+                menuItem.addEventListener('click', () => {
+                    item.action();
+                    contextMenu.remove();
+                });
+                
+                contextMenu.appendChild(menuItem);
+            }
+        });
+        
+        // Position and show menu
+        contextMenu.style.position = 'fixed';
+        contextMenu.style.left = e.clientX + 'px';
+        contextMenu.style.top = e.clientY + 'px';
+        contextMenu.style.zIndex = '1000';
+        
+        document.body.appendChild(contextMenu);
+        
+        // Close menu when clicking outside
+        const closeMenu = (event) => {
+            if (!contextMenu.contains(event.target)) {
+                contextMenu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        
+        setTimeout(() => {
+            document.addEventListener('click', closeMenu);
+        }, 10);
+    }
+
+    /**
+     * Toggle bulk selection mode
+     */
+    toggleBulkSelect() {
+        this.bulkSelectMode = !this.bulkSelectMode;
+        
+        if (this.bulkSelectMode) {
+            this.enterBulkSelect();
+        } else {
+            this.exitBulkSelect();
+        }
+    }
+    
+    /**
+     * Enter bulk selection mode
+     */
+    enterBulkSelect() {
+        this.bulkSelectMode = true;
+        this.selectedFolders.clear();
+        
+        document.querySelector('.folders-section').classList.add('bulk-select-mode');
+        this.bulkSelectBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+        
+        // Add click handlers to folder items
+        document.querySelectorAll('.folder-item').forEach(item => {
+            item.addEventListener('click', this.handleFolderSelect.bind(this));
+        });
+        
+        this.updateBulkActions();
+    }
+    
+    /**
+     * Exit bulk selection mode
+     */
+    exitBulkSelect() {
+        this.bulkSelectMode = false;
+        this.selectedFolders.clear();
+        
+        document.querySelector('.folders-section').classList.remove('bulk-select-mode');
+        this.bulkSelectBtn.innerHTML = '<i class="fas fa-check-square"></i> Select';
+        this.bulkActionsBar.classList.remove('show');
+        
+        // Remove selection styling
+        document.querySelectorAll('.folder-item.selected').forEach(item => {
+            item.classList.remove('selected');
+        });
+    }
+    
+    /**
+     * Handle folder selection in bulk mode
+     * @param {Event} e - Click event
+     */
+    handleFolderSelect(e) {
+        if (!this.bulkSelectMode) return;
+        
+        e.stopPropagation();
+        
+        const folderItem = e.currentTarget;
+        const folderName = folderItem.dataset.folder;
+        
+        if (this.selectedFolders.has(folderName)) {
+            this.selectedFolders.delete(folderName);
+            folderItem.classList.remove('selected');
+        } else {
+            this.selectedFolders.add(folderName);
+            folderItem.classList.add('selected');
+        }
+        
+        this.updateBulkActions();
+    }
+    
+    /**
+     * Update bulk actions UI
+     */
+    updateBulkActions() {
+        const count = this.selectedFolders.size;
+        
+        if (count > 0) {
+            this.selectedCountSpan.textContent = `${count} folder${count === 1 ? '' : 's'} selected`;
+            this.bulkActionsBar.classList.add('show');
+        } else {
+            this.bulkActionsBar.classList.remove('show');
+        }
+    }
+    
+    /**
+     * Bulk download selected folders
+     */
+    async bulkDownload() {
+        if (this.selectedFolders.size === 0) return;
+        
+        const confirmed = confirm(`Download all pictures from ${this.selectedFolders.size} selected folders?`);
+        if (!confirmed) return;
+        
+        try {
+            toggleLoading(true);
+            
+            let totalDownloaded = 0;
+            let totalFailed = 0;
+            
+            for (const folderName of this.selectedFolders) {
+                const folderData = this.folders[folderName];
+                if (folderData && folderData.pictures) {
+                    for (const picture of folderData.pictures) {
+                        try {
+                            await window.apiService.downloadPicture(folderName, picture.filename);
+                            totalDownloaded++;
+                        } catch (error) {
+                            totalFailed++;
+                        }
+                    }
+                }
+            }
+            
+            window.toastManager?.show('success', 'Bulk Download Complete',
+                `Downloaded ${totalDownloaded} pictures${totalFailed > 0 ? `, ${totalFailed} failed` : ''}`);
+            
+        } catch (error) {
+            handleError(error, 'bulk download');
+        } finally {
+            toggleLoading(false);
+        }
+    }
+}
+
+// Initialize folders manager when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.foldersManager = new FoldersManager();
+    console.log('Folders manager initialized');
+});

@@ -60,23 +60,6 @@ class GalleryManager {
     }
 
     /**
-     * Update folder filter dropdown
-     */
-    updateFolderFilter() {
-        const folders = [...new Set(this.pictures.map(pic => pic.folderName))].sort();
-        
-        this.folderFilter.innerHTML = '<option value="">All Folders</option>';
-        
-        folders.forEach(folder => {
-            const option = createElement('option', {
-                value: folder,
-                textContent: folder
-            });
-            this.folderFilter.appendChild(option);
-        });
-    }
-
-    /**
      * Filter pictures by folder
      * @param {string} folderName - Folder to filter by
      */
@@ -90,6 +73,41 @@ class GalleryManager {
         }
         
         this.renderPictures();
+    }
+
+    /**
+     * Set folder filter programmatically (for external components)
+     * @param {string} folderName - Folder to filter by
+     */
+    setFolderFilter(folderName) {
+        // Update the dropdown
+        if (this.folderFilter) {
+            this.folderFilter.value = folderName || '';
+        }
+        // Apply the filter
+        this.filterByFolder(folderName);
+    }
+
+    /**
+     * Update folder filter dropdown with available folders
+     */
+    updateFolderFilter() {
+        if (!this.folderFilter) return;
+
+        // Get unique folder names from pictures
+        const folderNames = [...new Set(this.pictures.map(pic => pic.folderName).filter(Boolean))];
+        folderNames.sort();
+
+        // Clear existing options except "All Folders"
+        this.folderFilter.innerHTML = '<option value="">All Folders</option>';
+
+        // Add folder options
+        folderNames.forEach(folderName => {
+            const option = document.createElement('option');
+            option.value = folderName;
+            option.textContent = folderName;
+            this.folderFilter.appendChild(option);
+        });
     }
 
     /**
@@ -127,7 +145,7 @@ class GalleryManager {
 
         // Handle image load error
         img.addEventListener('error', () => {
-            img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBmb3VuZDwvdGV4dD48L3N2Zz4=';
+            img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvcnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBmb3VuZDwvdGV4dD48L3N2Zz4=';
         });
 
         // Picture info

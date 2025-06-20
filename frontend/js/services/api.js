@@ -254,6 +254,52 @@ class ApiService {
             throw new Error(`Failed to get all pictures: ${error.message}`);
         }
     }
+
+    /**
+     * Rename a folder
+     * @param {string} folderName - Current folder name
+     * @param {string} newName - New folder name
+     * @returns {Promise} - Rename result
+     */
+    async renameFolder(folderName, newName) {
+        const formData = new FormData();
+        formData.append('new_name', newName);
+
+        const url = `${this.baseUrl}${API_CONFIG.ENDPOINTS.FOLDERS}/${encodeURIComponent(folderName)}/rename`;
+        
+        return await this.makeRequest(url, {
+            method: 'PUT',
+            body: formData
+        });
+    }
+
+    /**
+     * Copy a folder
+     * @param {string} folderName - Source folder name
+     * @param {string} newName - New folder name
+     * @returns {Promise} - Copy result
+     */
+    async copyFolder(folderName, newName) {
+        const formData = new FormData();
+        formData.append('new_name', newName);
+
+        const url = `${this.baseUrl}${API_CONFIG.ENDPOINTS.FOLDERS}/${encodeURIComponent(folderName)}/copy`;
+        
+        return await this.makeRequest(url, {
+            method: 'POST',
+            body: formData
+        });
+    }
+
+    /**
+     * Get detailed folder information
+     * @param {string} folderName - Folder name
+     * @returns {Promise} - Folder information
+     */
+    async getFolderInfo(folderName) {
+        const url = `${this.baseUrl}${API_CONFIG.ENDPOINTS.FOLDERS}/${encodeURIComponent(folderName)}/info`;
+        return await this.makeRequest(url);
+    }
 }
 
 // Create global API service instance

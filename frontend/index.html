@@ -57,9 +57,16 @@
 
                         <div class="upload-options">
                             <div class="form-group">
-                                <label for="folder-name">Folder Name (optional):</label>
-                                <input type="text" id="folder-name"
-                                    placeholder="Enter folder name or leave empty for auto-generated">
+                                <label for="folder-selector">Folder:</label>
+                                <div class="folder-input-container">
+                                    <select id="folder-selector" class="folder-selector">
+                                        <option value="">Create new folder</option>
+                                    </select>
+                                    <input type="text" id="folder-name" class="folder-name-input"
+                                        placeholder="Enter folder name or leave empty for auto-generated"
+                                        autocomplete="off">
+                                </div>
+                                <small class="form-help">Choose an existing folder or create a new one</small>
                             </div>
                         </div>
 

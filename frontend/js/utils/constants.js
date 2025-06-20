@@ -1,6 +1,15 @@
 // API Configuration
 const API_CONFIG = {
-    BASE_URL: 'http://localhost:8000',
+    // Automatically detect if we're running on Live Server or served from FastAPI
+    BASE_URL: (() => {
+        const currentHost = window.location.host;
+        // If running on Live Server (usually port 5500) or other development server
+        if (currentHost.includes(':5500') || currentHost.includes(':3000') || currentHost.includes('127.0.0.1:5500')) {
+            return 'http://localhost:8000';  // Backend API server
+        }
+        // If served from FastAPI directly
+        return window.location.origin;
+    })(),
     ENDPOINTS: {
         UPLOAD: '/pictures',
         FOLDERS: '/folders',

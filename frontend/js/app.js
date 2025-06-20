@@ -133,6 +133,13 @@ class PictureManagerApp {
      */
     handleTabSwitch(tabName) {
         switch (tabName) {
+            case 'upload':
+                // Refresh folder list for upload
+                if (window.uploadManager) {
+                    window.uploadManager.loadExistingFolders();
+                }
+                break;
+                
             case 'gallery':
                 // Refresh gallery if needed
                 if (window.galleryManager && !window.galleryManager.isLoading) {

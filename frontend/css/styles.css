@@ -169,6 +169,8 @@ body {
 /* Form Styles */
 .form-group {
   margin-bottom: 1rem;
+  width: 100%;
+  overflow: hidden;
 }
 
 .form-group label {
@@ -194,6 +196,66 @@ select:focus {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+}
+
+/* Folder Input Styles */
+.folder-input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+  width: 100%;
+  overflow: hidden;
+}
+
+.folder-selector {
+  flex: 0 0 auto;
+  min-width: 150px;
+  max-width: 200px;
+  background-color: white;
+  cursor: pointer;
+}
+
+.folder-name-input {
+  flex: 1;
+  transition: var(--transition);
+  background-color: white;
+  color: var(--text-primary);
+  display: block;
+  visibility: visible;
+  min-width: 0;
+  width: 100%;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.folder-name-input:not(:disabled) {
+  background-color: white;
+  cursor: text;
+  border-color: var(--border-color);
+}
+
+.folder-name-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+}
+
+.folder-name-input:disabled {
+  background-color: var(--background-color);
+  cursor: not-allowed;
+  opacity: 0.6;
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+.form-help {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
 }
 
 /* Loading Overlay */
