@@ -179,28 +179,28 @@ class UploadManager {
                 alt: file.name
             });
         } catch (error) {
-            thumbnail = createElement('div', {
-                className: 'file-thumbnail',
-                innerHTML: '<i class="fas fa-file-image"></i>'
-            });
+            thumbnail = createElement('div', { 
+                className: 'file-thumbnail flex-center'
+            }, createIcon('fa-file-image'));
         }
 
-        // File info
-        const fileInfo = createElement('div', { className: 'file-info' });
+        // File info container
+        const fileInfo = createElement('div', { className: 'file-info flex gap-2' });
         fileInfo.appendChild(thumbnail);
 
+        // File details
         const fileDetails = createElement('div', { className: 'file-details' });
-        fileDetails.appendChild(createElement('h4', {}, escapeHtml(file.name)));
-        fileDetails.appendChild(createElement('p', {}, formatFileSize(file.size)));
+        fileDetails.appendChild(createElement('h4', { className: 'mb-1' }, escapeHtml(file.name)));
+        fileDetails.appendChild(createElement('p', { className: 'text-secondary' }, formatFileSize(file.size)));
 
         fileInfo.appendChild(fileDetails);
 
         // Remove button
-        const removeBtn = createElement('button', {
-            className: 'file-remove',
-            innerHTML: '<i class="fas fa-times"></i>',
+        const removeBtn = createButton('', 'danger', {
+            className: 'btn-sm file-remove',
             title: 'Remove file'
         });
+        removeBtn.appendChild(createIcon('fa-times'));
 
         removeBtn.addEventListener('click', () => {
             this.removeFile(index);
@@ -253,11 +253,10 @@ class UploadManager {
             return;
         }
 
-        this.isUploading = true;
-        this.updateUploadButton();
-        toggleLoading(true);
+        await executeWithErrorHandling(async () => {
+            this.isUploading = true;
+            this.updateUploadButton();
 
-        try {
             const folderName = this.getFolderName();
             
             const result = await window.apiService.uploadPictures(
@@ -292,13 +291,10 @@ class UploadManager {
             window.galleryManager?.refresh();
             window.foldersManager?.refresh();
 
-        } catch (error) {
-            handleError(error, 'upload');
-        } finally {
-            this.isUploading = false;
-            this.updateUploadButton();
-            toggleLoading(false);
-        }
+        }, 'File upload', true);
+        
+        this.isUploading = false;
+        this.updateUploadButton();
     }
 
     /**
